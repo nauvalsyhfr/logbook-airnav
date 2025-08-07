@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white text-center py-3">
+            <h2 class="h4 mb-0">Edit Logbook - Approach Control Unit #{{ log.id }}</h2>
+        </div>
+        <div class="card-body p-4">
+            <form method="POST" action="{{ url_for('main.edit_log', log_id=log.id) }}" enctype="multipart/form-data">
+                
+                {% set statuses = {} %}
+                {% for status in log.facility_statuses %}
+                    {% set _ = statuses.update({status.facility_id: status}) %}
+                {% endfor %}
+
+                <div class="card mb-4">
+                    <div class="card-header" style="background-color: #f8f9fa;"><strong>General Information</strong></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="log_date" class="form-label">Day & Date</label>
+                                <input type="date" class="form-control" id="log_date" name="log_date" value="{{ log.log_date.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="shift" class="form-label">Shift</label>
+                                <select class="form-select" id="shift" name="shift" required>
+                                    <option value="Pagi" {% if log.shift == 'Pagi' %}selected{% endif %}>Pagi</option>
+                                    <option value="Siang" {% if log.shift == 'Siang' %}selected{% endif %}>Siang</option>
+                                    <option value="Malam" {% if log.shift == 'Malam' %}selected{% endif %}>Malam</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">ATC on Duty</label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm" id="atc-duty-table">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Personnel Name</th>
+                                                <th style="width: 10%;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for person in log.atc_on_duty_personnel %}
+                                            <tr>
+                                                <td>
+                                                    <select name="atc_on_duty_personnel[]" class="form-select form-select-sm" required>
+                                                        <option value="" disabled>-- Select Personnel --</option>
+                                                        {% for p_option in atc_personnel_list %}
+                                                            <option value="{{ p_option.id }}" {% if p_option.id == person.id %}selected{% endif %}>{{ p_option.name }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-danger remove-atc-row"><i class="fas fa-times"></i></button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="add-atc-row">+ Add Personnel</button>
+                            </div>
+                            <div class="col-12">
+                                <label for="notam" class="form-label">NOTAM</label>
+                                <textarea class="form-control" id="notam" name="notam" rows="3">{{ log.notam or '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header" style="background-color: #f8f9fa;"><strong>ATC Position Seat</strong></div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm text-center">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-start" style="vertical-align: middle;">Position / Time</th>
+                                        {% for i in range(1, 7) %}
+                                        <th><input type="text" name="time_header_{{ i }}" class="form-control form-control-sm" value="{{ log.atc_position_header['header_' ~ i] if log.atc_position_header else '' }}" placeholder="Start - End"></th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set positions = ["SUPERVISOR", "CONTROLLER RADAR 123.4 Mhz", "ASSISTANCE RADAR 123.4 Mhz", "CONTROLLER RADAR 120.2 Mhz", "ASSISTANCE RADAR 120.2 Mhz", "REST"] %}
+                                    {% for position_name in positions %}
+                                    <tr>
+                                        <td class="text-start"><strong>{{ position_name }}</strong></td>
+                                        {% set pos_key = position_name.replace(" ", "_").replace(".", "").lower() %}
+                                        {% set pos_data = atc_positions.get(position_name) %}
+                                        {% for i in range(1, 7) %}
+                                        <td>
+                                            <select name="position_{{ pos_key }}_{{ i }}" class="form-select form-select-sm position-seat-select">
+                                                <option value="">--</option>
+                                                {% set saved_name = pos_data['time_slot_' ~ i] if pos_data else '' %}
+                                                {% if saved_name %}
+                                                    <option value="{{ saved_name }}" selected>{{ saved_name }}</option>
+                                                {% endif %}
+                                            </select>
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header" style="background-color: #f8f9fa;"><strong>Facilities Status Check</strong></div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for category, facilities in grouped_facilities.items() %}
+                            <div class="col-md-6">
+                                <h5 class="mt-3">{{ category }}</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>FACILITIES</th>
+                                                <th>REMARK</th>
+                                                <th>Condition</th>
+                                                <th>Notes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for facility in facilities %}
+                                            <tr>
+                                                {% set current_status = statuses.get(facility.id) %}
+                                                <td>{{ facility.name }}</td>
+                                                <td>{{ facility.remark or 'N/A' }}</td>
+                                                <td>
+                                                    <select name="facility_{{ facility.id }}_condition" class="form-select form-select-sm" required>
+                                                        <option value="" disabled {% if not current_status %}selected{% endif %}>--</option>
+                                                        
+                                                        {% if category == 'FACILITIES' or facility.name.startswith('VHF') or facility.name.startswith('MONITOR') or facility.name.startswith('TELEPHONE') %}
+                                                            {% for val in ['G', 'F', 'P', 'U/S'] %}
+                                                            <option value="{{ val }}" {% if current_status and current_status.condition.value == val %}selected{% endif %}>{{ val }}</option>
+                                                            {% endfor %}
+                                                        {% else %}
+                                                            {% for val in ['5', '4', '3', '2', '1'] %}
+                                                            <option value="{{ val }}" {% if current_status and current_status.condition.value == val %}selected{% endif %}>{{ val }}</option>
+                                                            {% endfor %}
+                                                        {% endif %}
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="text" name="facility_{{ facility.id }}_notes" class="form-control form-control-sm" value="{{ current_status.notes if current_status else '' }}" placeholder="Optional">
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header" style="background-color: #f8f9fa;">
+                        <strong>Description of Activities</strong>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm" id="operational-log-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%;">Time (UTC)</th>
+                                    <th>Description</th>
+                                    <th style="width: 20%;">Remarks</th>
+                                    <th style="width: 5%;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for op_log in log.operational_logs %}
+                                <tr>
+                                    <td><input type="time" name="op_log_time_{{ op_log.id }}" class="form-control form-control-sm" value="{{ op_log.event_time.strftime('%H:%M') }}" required></td>
+                                    <td><textarea name="op_log_desc_{{ op_log.id }}" class="form-control form-control-sm" rows="2" required>{{ op_log.description }}</textarea></td>
+                                    <td><input type="text" name="op_log_remarks_{{ op_log.id }}" class="form-control form-control-sm" value="{{ op_log.remarks or '' }}"></td>
+                                    <td><button type="button" class="btn btn-sm btn-danger remove-log-row">X</button></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="add-log-row">+ Add Row</button>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header" style="background-color: #f8f9fa;">
+                        <strong>Signatures (Upload to Replace)</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered text-center">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Transferring Controller On Duty</th>
+                                        <th>Accepting Controller On Duty</th>
+                                        <th>Manager Operation On Duty</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            {% if log.controller_signature_1 %}
+                                            <img src="{{ url_for('static', filename='uploads/' + log.controller_signature_1) }}" alt="Signature" class="img-thumbnail mb-2" style="max-height: 50px;">
+                                            {% endif %}
+                                            <input type="file" class="form-control form-control-sm" name="controller_signature_1" accept="image/png, image/jpeg">
+                                        </td>
+                                        <td>
+                                            {% if log.controller_signature_2 %}
+                                            <img src="{{ url_for('static', filename='uploads/' + log.controller_signature_2) }}" alt="Signature" class="img-thumbnail mb-2" style="max-height: 50px;">
+                                            {% endif %}
+                                            <input type="file" class="form-control form-control-sm" name="controller_signature_2" accept="image/png, image/jpeg">
+                                        </td>
+                                        <td>
+                                            {% if log.manager_signature %}
+                                            <img src="{{ url_for('static', filename='uploads/' + log.manager_signature) }}" alt="Signature" class="img-thumbnail mb-2" style="max-height: 50px;">
+                                            {% endif %}
+                                            <input type="file" class="form-control form-control-sm" name="manager_signature" accept="image/png, image/jpeg">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{{ url_for('main.view_log', log_id=log.id) }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Update Log Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<template id="atc-row-template">
+    <tr>
+        <td>
+            <select name="atc_on_duty_personnel[]" class="form-select form-select-sm" required>
+                <option value="" disabled selected>-- Select Personnel --</option>
+                {% for p in atc_personnel_list %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-danger remove-atc-row"><i class="fas fa-times"></i></button>
+        </td>
+    </tr>
+</template>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dutyTable = document.getElementById('atc-duty-table');
+    const addAtcRowButton = document.getElementById('add-atc-row');
+
+    function updatePositionSeatDropdowns() {
+        const dutyRows = dutyTable.querySelectorAll('tbody tr');
+        const personnelOnDuty = new Set();
+        dutyRows.forEach(row => {
+            const select = row.querySelector('select[name="atc_on_duty_personnel[]"]');
+            if (select && select.value) {
+                personnelOnDuty.add(select.options[select.selectedIndex].text);
+            }
+        });
+
+        const positionSeatDropdowns = document.querySelectorAll('.position-seat-select');
+        positionSeatDropdowns.forEach(dropdown => {
+            const currentSelectedValue = dropdown.value; 
+            const existingOptions = new Set(Array.from(dropdown.options).map(o => o.value));
+            
+            personnelOnDuty.forEach(name => {
+                if (!existingOptions.has(name)) {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    dropdown.appendChild(option);
+                }
+            });
+
+            Array.from(dropdown.options).forEach(option => {
+                if (option.value !== "" && !personnelOnDuty.has(option.value) && option.value !== currentSelectedValue) {
+                    option.remove();
+                }
+            });
+            
+            if (Array.from(personnelOnDuty).includes(currentSelectedValue)) {
+                dropdown.value = currentSelectedValue;
+            } else if (!currentSelectedValue && dropdown.options.length > 0) {
+                 dropdown.value = "";
+            }
+        });
+    }
+
+    updatePositionSeatDropdowns();
+
+    addAtcRowButton.addEventListener('click', function() {
+        const template = document.getElementById('atc-row-template');
+        const tableBody = dutyTable.querySelector('tbody');
+        const clone = template.content.cloneNode(true);
+        tableBody.appendChild(clone);
+    });
+
+    dutyTable.addEventListener('click', function(e) {
+        const removeButton = e.target.closest('.remove-atc-row');
+        if (removeButton) {
+            removeButton.closest('tr').remove();
+            updatePositionSeatDropdowns();
+        }
+    });
+
+    dutyTable.addEventListener('change', function(e) {
+        if (e.target.matches('select[name="atc_on_duty_personnel[]"]')) {
+            updatePositionSeatDropdowns();
+        }
+    });
+
+    document.getElementById('add-log-row').addEventListener('click', function() {
+        const tableBody = document.querySelector('#operational-log-table tbody');
+        const newIndex = 'new_' + Date.now();
+        const newRow = tableBody.insertRow();
+        newRow.innerHTML = `
+            <td><input type="time" name="op_log_time_${newIndex}" class="form-control form-control-sm" required></td>
+            <td><textarea name="op_log_desc_${newIndex}" class="form-control form-control-sm" rows="2" required></textarea></td>
+            <td><input type="text" name="op_log_remarks_${newIndex}" class="form-control form-control-sm" placeholder="Optional remarks"></td>
+            <td><button type="button" class="btn btn-sm btn-danger remove-log-row">X</button></td>
+        `;
+    });
+
+    document.querySelector('#operational-log-table').addEventListener('click', function(e) {
+        const removeButton = e.target.closest('.remove-log-row');
+        if (removeButton) {
+            removeButton.closest('tr').remove();
+        }
+    });
+});
+</script>
+{% endblock %}

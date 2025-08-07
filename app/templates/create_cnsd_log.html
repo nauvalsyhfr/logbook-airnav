@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-5">
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('main.create_cnsd_log', airport_code=airport_code) }}">
+        <div class="card shadow-sm">
+            <div class="card-header text-center py-3">
+                <img src="{{ url_for('static', filename='img/airnav.png') }}" alt="AirNav Logo" style="height: 40px;" class="mb-2">
+                <h2 class="h4 mb-0">LOG BOOK HARIAN UNIT CNSD</h2>
+                <p class="mb-0 text-muted">
+                    {% if airport_code == 'YIA' %}
+                        BANDAR UDARA INTERNASIONAL YOGYAKARTA KULONPROGO
+                    {% elif airport_code == 'Adisutjipto' %}
+                        BANDAR UDARA ADISUTJIPTO
+                    {% elif airport_code == 'AdiSoemarmo' %}
+                        BANDAR UDARA INTERNASIONAL ADI SOEMARMO
+                    {% elif airport_code == 'TunggulWulung' %}
+                        BANDAR UDARA TUNGGUL WULUNG
+                    {% else %}
+                        {{ airport_code }}
+                    {% endif %}
+                </p>
+            </div>
+            <div class="card-body p-4">
+                <!-- General Information -->
+                <div class="row mb-3 align-items-end">
+                    <div class="col-md-6">
+                        <label for="shift" class="form-label"><strong>SHIFT :</strong></label>
+                        <input type="text" class="form-control" id="shift" name="shift" placeholder="PAGI / SIANG / MALAM" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="log_date" class="form-label"><strong>TANGGAL :</strong></label>
+                        <input type="date" class="form-control" id="log_date" name="log_date" required>
+                    </div>
+                </div>
+
+                <!-- Personnel Table -->
+                <h5 class="mt-4">Personil Bertugas</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="personnelTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 5%;">No</th>
+                                <th>Nama</th>
+                                <th style="width: 35%;">Paraf (Upload PNG/JPG)</th>
+                                <th style="width: 10%;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Baris ditambahkan oleh JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="addPersonnelRow">+ Tambah Personil</button>
+
+                <!-- Facilities Status -->
+                <div class="row mt-4">
+                    <!-- PERBAIKAN: Menyeimbangkan kategori antar kolom -->
+                    <!-- Kolom Kiri -->
+                    <div class="col-lg-6">
+                        {% for category in ['COMMUNICATION'] %}
+                        {% if grouped_facilities.get(category) %}
+                        <h5 class="mt-3">{{ category }}</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 5%;">No</th>
+                                        <th>Nama Fasilitas</th>
+                                        <th></th>
+                                        <th class="text-center">Baik</th>
+                                        <th class="text-center">Rusak</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for facility in grouped_facilities[category] %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ facility.name }}</td>
+                                    <td>{{ facility.sub_name }}</td>
+                                    <td class="text-center"><input type="radio" name="facility_{{ facility.id }}_condition" value="Baik" class="form-check-input" required></td>
+                                    <td class="text-center"><input type="radio" name="facility_{{ facility.id }}_condition" value="Rusak" class="form-check-input"></td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    <!-- Kolom Kanan -->
+                    <div class="col-lg-6">
+                        {% for category in ['NAVIGATION', 'SURVEILLANCE', 'DATA PROCESSING'] %}
+                        {% if grouped_facilities.get(category) %}
+                        <h5 class="mt-3">{{ category }}</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 5%;">No</th>
+                                        <th>Nama Fasilitas</th>
+                                        <th></th>
+                                        <th class="text-center">Baik</th>
+                                        <th class="text-center">Rusak</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for facility in grouped_facilities[category] %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ facility.name }}</td>
+                                    <td>{{ facility.sub_name }}</td>
+                                    <td class="text-center"><input type="radio" name="facility_{{ facility.id }}_condition" value="Baik" class="form-check-input" required></td>
+                                    <td class="text-center"><input type="radio" name="facility_{{ facility.id }}_condition" value="Rusak" class="form-check-input"></td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Uraian Kegiatan -->
+                <h5 class="mt-4">Uraian Kegiatan</h5>
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="kegiatanTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%;">Jam</th>
+                                <th>Keterangan</th>
+                                <th style="width: 10%;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="addKegiatanRow">+ Tambah Kegiatan</button>
+
+                <!-- Manager Signature -->
+                <div class="mt-5 text-end">
+                    <label for="manager_signature" class="form-label">Paraf Manager Teknik</label>
+                    <input type="file" class="form-control" id="manager_signature" name="manager_signature" accept="image/png, image/jpeg">
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{{ url_for('main.cnsd_dashboard', airport_code=airport_code) }}" class="btn btn-secondary">Batal</a>
+                    <button type="submit" class="btn btn-primary">Simpan Logbook</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Script untuk menambah baris personil
+    document.getElementById('addPersonnelRow').addEventListener('click', function() {
+        const tableBody = document.querySelector('#personnelTable tbody');
+        const rowCount = tableBody.rows.length;
+        const newRow = tableBody.insertRow();
+        newRow.innerHTML = `
+            <td>${rowCount + 1}</td>
+            <td><input type="text" name="personnel_name[]" class="form-control form-control-sm" required></td>
+            <td><input type="file" name="personnel_signature[]" class="form-control form-control-sm" accept="image/png, image/jpeg"></td>
+            <td><button type="button" class="btn btn-sm btn-danger remove-row">X</button></td>
+        `;
+    });
+    // Script untuk menambah baris kegiatan
+    document.getElementById('addKegiatanRow').addEventListener('click', function() {
+        const tableBody = document.querySelector('#kegiatanTable tbody');
+        const newRow = tableBody.insertRow();
+        newRow.innerHTML = `
+            <td><input type="text" name="event_time[]" class="form-control form-control-sm" placeholder="e.g., 08.00" required></td>
+            <td><textarea name="description[]" class="form-control form-control-sm" rows="1" required></textarea></td>
+            <td><button type="button" class="btn btn-sm btn-danger remove-row">X</button></td>
+        `;
+    });
+    // Script untuk menghapus baris
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('remove-row')) {
+            e.target.closest('tr').remove();
+        }
+    });
+</script>
+{% endblock %}

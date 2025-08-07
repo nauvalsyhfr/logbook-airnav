@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# CSS Khusus untuk halaman login #}
+<style>
+    /* Sembunyikan navbar standar di halaman login */
+    nav.navbar {
+        display: none;
+    }
+    /* Hapus padding dari container utama agar background penuh */
+    main.container-fluid {
+        padding: 0 !important;
+        margin-top: 0 !important;
+    }
+    body {
+        font-family: 'Inter', sans-serif;
+        background-image: url('{{ url_for('static', filename='img/airnav3.png') }}');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        min-height: 100vh;
+        overflow: hidden; /* Mencegah scroll pada background */
+    }
+    .login-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+    }
+    .login-card {
+        width: 100%;
+        max-width: 400px; /* Sedikit lebih lebar untuk proporsi yang lebih baik */
+        background: rgba(10, 49, 90, 0.6); /* Sedikit lebih gelap untuk kontras */
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        color: white;
+    }
+    .login-card .card-body {
+        padding: 2rem;
+    }
+    .login-card .form-label {
+        color: #e0e0e0;
+    }
+    .login-card .form-control {
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+    .login-card .form-control::placeholder { /* Style untuk placeholder text */
+        color: rgba(255, 255, 255, 0.5);
+    }
+    .login-card .form-control:focus {
+        background-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 0 0.25rem rgba(66, 153, 225, 0.25);
+        border-color: #4299e1;
+        color: white;
+    }
+</style>
+
+<div class="login-container">
+    <div class="card login-card">
+        {# PERBAIKAN: Struktur card-body yang benar, hanya satu level #}
+        <div class="card-body text-center">
+            
+            {# Header dengan Logo #}
+            <div>
+                <img src="{{ url_for('static', filename='img/bumn.png') }}" alt="Logo BUMN" style="height: 25px;" class="me-2">
+                <img src="{{ url_for('static', filename='img/logoairnav.png') }}" alt="Logo AirNav" style="height: 50px;">
+            </div>
+
+            {# Judul #}
+            <div class="my-4">
+                <h4 class="fw-bold">Digital Operational Logbook</h4>
+                <h6 class="text-white-50" style="font-size: 0.9rem;">AirNav Indonesia</h6>
+            </div>
+
+            {# Menampilkan pesan error/sukses (flash message) #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'warning' else category }} py-2" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {# Form Login #}
+            <form method="POST" action="{{ url_for('auth.login') }}" class="text-start mt-3">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="username" name="username" placeholder="Enter your username" required>
+                </div>
+                <div class="mb-4">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg fw-bold" style="background-color: #2563eb; border-color: #2563eb;">Login</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

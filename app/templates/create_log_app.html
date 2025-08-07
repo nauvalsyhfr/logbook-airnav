@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white text-center py-3">
+            <div><img src="{{ url_for('static', filename='img/airnav.png') }}" alt="AirNav Logo" style="height: 80px;"></div>
+            <h2 class="h4 mb-0 mt-2">Approach Control Unit Yogyakarta Radar</h2>
+        </div>
+        <div class="card-body p-4">
+            <form method="POST" action="{{ url_for('main.create_log_entry', logbook_type='APP') }}" enctype="multipart/form-data">
+
+                <!-- General Information -->
+                <div class="card mb-4">
+                    <div class="card-header" style="background-color: #f8f9fa;"><strong>General Information</strong></div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-lg-6">
+                                <label for="log_date" class="form-label">Day & Date</label>
+                                <input type="date" class="form-control" id="log_date" name="log_date" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="shift" class="form-label">Shift</label>
+                                <select class="form-select" id="shift" name="shift" required>
+                                    <option value="" disabled selected>-- Pilih Shift --</option>
+                                    <option value="Pagi">Pagi</option>
+                                    <option value="Siang">Siang</option>
+                                    <option value="Malam">Malam</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">ATC on Duty</label>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm" id="atc-duty-table">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Personnel Name</th>
+                                                <th style="width: 10%;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="add-atc-row">+ Add Personnel</button>
+                            </div>
+
+                            <div class="col-12">
+                                <label for="notam" class="form-label">NOTAM</label>
+                                <textarea class="form-control" id="notam" name="notam" rows="3" placeholder="Enter NOTAM information..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ATC Position Seat -->
+                <div class="card mb-4">
+                    <div class="card-header" style="background-color: #f8f9fa;"><strong>ATC Position Seat</strong></div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm text-center">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-start" style="vertical-align: middle;">Position / Time</th>
+                                        {% for i in range(1, 7) %}
+                                        <th><input type="text" name="time_header_{{ i }}" class="form-control form-control-sm" placeholder="Start - End"></th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set positions = ["SUPERVISOR", "CONTROLLER RADAR 123.4 Mhz", "ASSISTANCE RADAR 123.4 Mhz", "CONTROLLER RADAR 120.2 Mhz", "ASSISTANCE RADAR 120.2 Mhz", "REST"] %}
+                                    {% for position_name in positions %}
+                                    <tr>
+                                        <td class="text-start">
+                                            <strong>{{ position_name }}</strong>
+                                        </td>
+                                        {% set pos_key = position_name.replace(" ", "_").replace(".", "").lower() %}
+                                        {% for i in range(1, 7) %}
+                                        <td>
+                                            <select name="position_{{ pos_key }}_{{ i }}" class="form-select form-select-sm position-seat-select">
+                                                <option value="">--</option>
+                                            </select>
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Facilities Status Check -->
+                <div class="card mb-4">
+                    <div class="card-header" style="background-color: #f8f9fa;"><strong>Facilities Status Check</strong></div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for category, facilities in grouped_facilities.items() %}
+                            <div class="col-lg-6">
+                                <h5 class="mt-3">{{ category }}</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>FACILITIES</th>
+                                                <th>REMARK</th>
+                                                <th>Condition</th>
+                                                <th>Notes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for facility in facilities %}
+                                            <tr>
+                                                <td>{{ facility.name }}</td>
+                                                <td>{{ facility.remark or 'N/A' }}</td>
+                                                <td>
+                                                    <select name="facility_{{ facility.id }}_condition" class="form-select form-select-sm" required>
+                                                        <option value="" disabled selected>--</option>
+                                                        {# --- PERUBAHAN LOGIKA KONDISI --- #}
+                                                        {% if category == 'FACILITIES' or facility.name.startswith('VHF') or facility.name.startswith('MONITOR') or facility.name.startswith('TELEPHONE') %}
+                                                            <option value="G">G</option>
+                                                            <option value="F">F</option>
+                                                            <option value="P">P</option>
+                                                            <option value="U/S">U/S</option>
+                                                        {% else %}
+                                                            <option value="1">1</option>
+                                                            <option value="2">2</option>
+                                                            <option value="3">3</option>
+                                                            <option value="4">4</option>
+                                                            <option value="5">5</option>
+                                                        {% endif %}
+                                                    </select>
+                                                </td>
+                                                <td>
+                                                    <input type="text" name="facility_{{ facility.id }}_notes" class="form-control form-control-sm" placeholder="Optional">
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                             {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description of Activities -->
+                <div class="card">
+                    <div class="card-header" style="background-color: #f8f9fa;">
+                        <strong>Description of Activities</strong>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm" id="operational-log-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%;">Time (UTC)</th>
+                                    <th>Description</th>
+                                    <th style="width: 20%;">Remarks</th>
+                                    <th style="width: 5%;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="add-log-row">+ Add Row</button>
+                    </div>
+                </div>
+
+                <!-- Signatures -->
+                <div class="card mt-4">
+                    <div class="card-header" style="background-color: #f8f9fa;">
+                        <strong>Signatures</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered text-center">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Transferring Controller On Duty</th>
+                                        <th>Accepting Controller On Duty</th>
+                                        <th>Manager Operation On Duty</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <input type="file" class="form-control form-control-sm" name="controller_signature_1" accept="image/png, image/jpeg">
+                                        </td>
+                                        <td>
+                                            <input type="file" class="form-control form-control-sm" name="controller_signature_2" accept="image/png, image/jpeg">
+                                        </td>
+                                        <td>
+                                            <input type="file" class="form-control form-control-sm" name="manager_signature" accept="image/png, image/jpeg">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{{ url_for('main.dashboard_operasi', type='APP') }}" class="btn btn-secondary">Back to Dashboard</a>
+                    <button type="submit" class="btn btn-primary">Create Log Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Template untuk baris baru personel ATC -->
+<template id="atc-row-template">
+    <tr>
+        <td>
+            <select name="atc_on_duty_personnel[]" class="form-select form-select-sm" required>
+                <option value="" disabled selected>-- Select Personnel --</option>
+                {% for p in atc_personnel_list %}
+                    <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-danger remove-atc-row">
+                <i class="fas fa-times"></i>
+            </button>
+        </td>
+    </tr>
+</template>
+
+<script>
+// Salin JavaScript dari create_log.html ke sini, tidak ada perubahan yang diperlukan.
+document.addEventListener('DOMContentLoaded', function() {
+    const dutyTable = document.getElementById('atc-duty-table');
+    const addAtcRowButton = document.getElementById('add-atc-row');
+
+    function updatePositionSeatDropdowns() {
+        const dutyRows = dutyTable.querySelectorAll('tbody tr');
+        const personnelOnDuty = [];
+        dutyRows.forEach(row => {
+            const select = row.querySelector('select[name="atc_on_duty_personnel[]"]');
+            if (select && select.value) {
+                const selectedOption = select.options[select.selectedIndex];
+                personnelOnDuty.push(selectedOption.text);
+            }
+        });
+        const positionSeatDropdowns = document.querySelectorAll('.position-seat-select');
+        positionSeatDropdowns.forEach(dropdown => {
+            const currentSelectedValue = dropdown.value;
+            dropdown.innerHTML = '';
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "--";
+            dropdown.appendChild(defaultOption);
+            personnelOnDuty.forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                dropdown.appendChild(option);
+            });
+            if (personnelOnDuty.includes(currentSelectedValue)) {
+                dropdown.value = currentSelectedValue;
+            }
+        });
+    }
+
+    addAtcRowButton.addEventListener('click', function() {
+        const template = document.getElementById('atc-row-template');
+        const tableBody = dutyTable.querySelector('tbody');
+        const clone = template.content.cloneNode(true);
+        tableBody.appendChild(clone);
+    });
+
+    dutyTable.addEventListener('click', function(e) {
+        const removeButton = e.target.closest('.remove-atc-row');
+        if (removeButton) {
+            removeButton.closest('tr').remove();
+            updatePositionSeatDropdowns();
+        }
+    });
+
+    dutyTable.addEventListener('change', function(e) {
+        if (e.target.tagName === 'SELECT') {
+            updatePositionSeatDropdowns();
+        }
+    });
+
+    addAtcRowButton.click();
+
+    document.getElementById('add-log-row').addEventListener('click', function() {
+        const tableBody = document.querySelector('#operational-log-table tbody');
+        const newIndex = 'new_' + Date.now();
+        const newRow = tableBody.insertRow();
+        
+        newRow.innerHTML = `
+            <td><input type="time" name="op_log_time_${newIndex}" class="form-control form-control-sm" required></td>
+            <td><textarea name="op_log_desc_${newIndex}" class="form-control form-control-sm" rows="2" required></textarea></td>
+            <td><input type="text" name="op_log_remarks_${newIndex}" class="form-control form-control-sm" placeholder="Optional remarks"></td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-danger remove-log-row"><i class="fas fa-times"></i></button></td>
+        `;
+    });
+
+    document.querySelector('#operational-log-table').addEventListener('click', function(e) {
+        const removeButton = e.target.closest('.remove-log-row');
+        if (removeButton) {
+            removeButton.closest('tr').remove();
+        }
+    });
+});
+</script>
+{% endblock %}

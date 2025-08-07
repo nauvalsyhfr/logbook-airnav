@@ -1,0 +1,15 @@
+# Virtual Environment
+venv/
+*.pyc
+__pycache__/
+
+# File environment (JANGAN PERNAH UPLOAD FILE INI)
+.env
+*.env
+
+# Folder instance Flask
+instance/
+
+# File sistem operasi
+.DS_Store
+Thumbs.db

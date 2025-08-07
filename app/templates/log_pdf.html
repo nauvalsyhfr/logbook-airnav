@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Logbook Entry #{{ log.id }}</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            font-size: 10px;
+        }
+        .container {
+            width: 100%;
+            margin: 0 auto;
+        }
+        .card {
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+            page-break-inside: avoid;
+        }
+        .card-header {
+            padding: 0.5rem 0.75rem;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .card-body {
+            padding: 0.75rem;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .text-start {
+            text-align: left;
+        }
+        dl {
+            display: grid;
+            grid-template-columns: 1fr 3fr;
+        }
+        dt {
+            font-weight: bold;
+        }
+        dd {
+            margin-left: 0;
+        }
+        pre {
+            white-space: pre-wrap;
+            font-family: sans-serif;
+            margin: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 0.4rem;
+            text-align: left;
+            vertical-align: top;
+        }
+        thead th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="text-center">
+            {% if logo_path %}
+            <img src="file://{{ logo_path }}" alt="AirNav Logo" style="height: 50px; margin-bottom: 10px;">
+            {% endif %}
+            <h2 style="margin-top: 0; margin-bottom: 0;">Aerodrome Control Tower Yogyakarta International Airport</h2>
+            <p>Logbook Entry #{{ log.id }}</p>
+        </div>
+
+        <!-- General Information -->
+        <div class="card">
+            <div class="card-header"><strong>General Information</strong></div>
+            <div class="card-body">
+                <dl>
+                    <dt>Day & Date</dt>
+                    <dd>{{ log.log_date.strftime('%d %B %Y') }}</dd>
+                    <dt>Shift</dt>
+                    <dd>{{ log.shift }}</dd>
+                    <dt>ATC on Duty</dt>
+                    <dd>
+                        {% if log.atc_on_duty_personnel %}
+                            {{ log.atc_on_duty_personnel | map(attribute='name') | join(', ') }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </dd>
+                    <dt>NOTAM</dt>
+                    <dd><pre>{{ log.notam or 'N/A' }}</pre></dd>
+                </dl>
+            </div>
+        </div>
+
+        <!-- ATC Position Seat -->
+        <div class="card">
+            <div class="card-header"><strong>ATC Position Seat</strong></div>
+            <div class="card-body">
+                <table class="text-center">
+                    <thead>
+                        <tr>
+                            <th class="text-start">Position/Time</th>
+                            {% for i in range(1, 7) %}
+                                <th>{{ log.atc_position_header['header_' + i|string] if log.atc_position_header and log.atc_position_header['header_' + i|string] else 'Start-End' }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for position in ['Controller', 'Supervisor', 'Rest'] %}
+                        <tr>
+                            <td class="text-start">
+                                {% if position == 'Supervisor' %}*Supervisor/Assistance{% else %}{{ position }}{% endif %}
+                            </td>
+                            {% set pos_data = atc_positions.get(position) %}
+                            {% for i in range(1, 7) %}
+                            <td>{{ pos_data['time_slot_' + i|string] if pos_data and pos_data['time_slot_' + i|string] else '-' }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Facilities Status Check -->
+        <div class="card">
+            <div class="card-header"><strong>Facilities Status Check</strong></div>
+            <div class="card-body">
+                {% for category, facilities in grouped_facilities.items() %}
+                <h5 style="margin-top: 1rem;">{{ category }}</h5>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Facility</th>
+                            {% if 'Support' not in category and 'Lighting' not in category %}
+                            <th>Remark</th>
+                            {% endif %}
+                            <th>Condition</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for facility in facilities %}
+                        {% if facility.name == 'ILS Runway 11' %}
+                            {% set ils_status = log.facility_statuses | selectattr("facility_id", "equalto", facility.id) | first %}
+                            {% if ils_status and ils_status.notes %}
+                                {% for item in ils_status.notes.split(' | ') %}
+                                    {% set parts = item.split(':', 2) %}
+                                    {% if parts | length == 3 %}
+                                    <tr>
+                                        <td>{{ facility.name }}</td>
+                                        <td>{{ parts[0] }}</td>
+                                        <td>{{ parts[1] }}</td>
+                                        <td>{{ parts[2] }}</td>
+                                    </tr>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td>{{ facility.name }}</td>
+                                    {% if 'Support' not in category and 'Lighting' not in category %}
+                                    <td>{{ facility.remark }}</td>
+                                    {% endif %}
+                                    <td colspan="2">N/A</td>
+                                </tr>
+                            {% endif %}
+                        {% else %}
+                        <tr>
+                            {% set current_status = log.facility_statuses | selectattr("facility_id", "equalto", facility.id) | first %}
+                            <td>{{ facility.name }}</td>
+                            {% if 'Support' not in category and 'Lighting' not in category %}
+                            <td>{{ facility.remark or 'N/A' }}</td>
+                            {% endif %}
+                            <td>
+                                {% if current_status %}
+                                    {% if current_status.condition.value in ['1','2','3','4','5'] %}
+                                        {% if current_status.condition == FacilityCondition.READABLE_5 %}5 - Perfectly Readable{% elif current_status.condition == FacilityCondition.READABLE_4 %}4 - Readable{% elif current_status.condition == FacilityCondition.READABLE_3 %}3 - Readable but with difficulty{% elif current_status.condition == FacilityCondition.READABLE_2 %}2 - Readable Now & Then{% elif current_status.condition == FacilityCondition.READABLE_1 %}1 - Unreadable{% endif %}
+                                    {% else %}
+                                        {{ current_status.condition.name.replace('_', ' ') }}
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>{{ current_status.notes if current_status else '' }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Description of Activities -->
+        <div class="card">
+            <div class="card-header"><strong>Description of Activities</strong></div>
+            <div class="card-body">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">Time (UTC)</th>
+                            <th>Description</th>
+                            <th style="width: 25%;">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for op_log in log.operational_logs %}
+                        <tr>
+                            <td>{{ op_log.event_time.strftime('%H:%M') }}</td>
+                            <td>{{ op_log.description }}</td>
+                            <td>{{ op_log.remarks or '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">No activities recorded.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- PERUBAHAN: Menambahkan tabel tanda tangan -->
+        <div class="card" style="margin-top: 20px;">
+            <div class="card-body">
+                <table class="text-center">
+                    <thead>
+                        <tr>
+                            <th style="width: 33.3%;">Controller On Duty</th>
+                            <th style="width: 33.3%;">Controller On Duty (Transfer of Duty)</th>
+                            <th style="width: 33.3%;">Manager Operation On Duty</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="height: 60px; vertical-align: bottom;">
+                                {% if signature_paths.controller_1 %}
+                                    <img src="file://{{ signature_paths.controller_1 }}" style="max-height: 50px; max-width: 120px;">
+                                {% endif %}
+                            </td>
+                            <td style="height: 60px; vertical-align: bottom;">
+                                {% if signature_paths.controller_2 %}
+                                    <img src="file://{{ signature_paths.controller_2 }}" style="max-height: 50px; max-width: 120px;">
+                                {% endif %}
+                            </td>
+                            <td style="height: 60px; vertical-align: bottom;">
+                                {% if signature_paths.manager %}
+                                    <img src="file://{{ signature_paths.manager }}" style="max-height: 50px; max-width: 120px;">
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

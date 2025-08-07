@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Logbook CNSD - {{ log.log_date.strftime('%Y-%m-%d') }}</title>
+    <style>
+        @page { size: A4; margin: 1cm; }
+        body { font-family: 'Helvetica', sans-serif; font-size: 9px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .header img { height: 40px; }
+        .header h2, .header p { margin: 0; }
+        .section-title { font-size: 11px; font-weight: bold; margin-top: 15px; margin-bottom: 5px; page-break-before: auto; }
+        table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
+        th, td { border: 1px solid #ccc; padding: 4px; text-align: left; vertical-align: top; }
+        thead { display: table-header-group; }
+        thead th { background-color: #f2f2f2; }
+        .text-center { text-align: center; }
+        .signature-img { max-height: 30px; max-width: 100px; }
+        .manager-signature { text-align: right; margin-top: 30px; page-break-inside: avoid; }
+        .main-container { width: 100%; border-spacing: 0; border-collapse: collapse; }
+        .main-column { width: 50%; vertical-align: top; padding-right: 10px; }
+        .main-column:last-child { padding-right: 0; padding-left: 10px; }
+        .table-bordered { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        {% if logo_path %}
+            <img src="file://{{ logo_path }}" alt="AirNav Logo">
+        {% endif %}
+        <h2 class="h4 mt-2">LOG BOOK HARIAN UNIT CNSD</h2>
+        <!-- PERBAIKAN FINAL: Menggunakan variabel dinamis untuk nama bandara -->
+        <p class="mb-0 text-muted">{{ airport_full_name }}</p>
+    </div>
+
+    <!-- General Information -->
+    <table class="table-bordered">
+        <tbody>
+            <tr>
+                <th style="width: 15%;">SHIFT</th>
+                <td>{{ log.shift }}</td>
+                <th style="width: 15%;">TANGGAL</th>
+                <td>{{ log.log_date.strftime('%d %B %Y') }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Personnel -->
+    <div class="section-title">Personil Bertugas</div>
+    <table class="table-bordered">
+        <thead>
+            <tr>
+                <th style="width: 5%;">No</th>
+                <th>Nama</th>
+                <th style="width: 35%;">Paraf</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for person in log.personnel %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ person.name }}</td>
+                <td class="text-center">
+                    {% if person.signature_path and signature_paths.get('personnel_' + person.id|string) %}
+                        <img src="file://{{ signature_paths['personnel_' + person.id|string] }}" class="signature-img">
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center">Tidak ada data personil.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Facilities Status & Uraian Kegiatan -->
+    <div class="section-title">Pemeriksaan Status Fasilitas & Uraian Kegiatan</div>
+    <table class="main-container">
+        <tr>
+            <td class="main-column">
+                <!-- PERBAIKAN FINAL: Menggunakan .get() untuk keamanan jika kategori tidak ada -->
+                {% if grouped_facilities.get('COMMUNICATION') %}
+                <strong>COMMUNICATION</strong>
+                <table class="table-bordered">
+                    <thead><tr><th>No</th><th>Fasilitas</th><th></th><th class="text-center">Kondisi</th></tr></thead>
+                    <tbody>
+                    {% for facility in grouped_facilities['COMMUNICATION'] %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ facility.name }}</td>
+                        <td>{{ facility.sub_name }}</td>
+                        <td class="text-center">{{ log.facility_statuses | selectattr('cnsd_facility_id', 'equalto', facility.id) | map(attribute='condition') | first or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+
+                {% if grouped_facilities.get('NAVIGATION') %}
+                <strong>NAVIGATION</strong>
+                <table class="table-bordered">
+                    <thead><tr><th>No</th><th>Fasilitas</th><th></th><th class="text-center">Kondisi</th></tr></thead>
+                    <tbody>
+                    {% for facility in grouped_facilities['NAVIGATION'] %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ facility.name }}</td>
+                        <td>{{ facility.sub_name }}</td>
+                        <td class="text-center">{{ log.facility_statuses | selectattr('cnsd_facility_id', 'equalto', facility.id) | map(attribute='condition') | first or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            </td>
+            <td class="main-column">
+                {% if grouped_facilities.get('SURVEILLANCE') %}
+                <strong>SURVEILLANCE</strong>
+                <table class="table-bordered">
+                    <thead><tr><th>No</th><th>Fasilitas</th><th></th><th class="text-center">Kondisi</th></tr></thead>
+                    <tbody>
+                    {% for facility in grouped_facilities['SURVEILLANCE'] %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ facility.name }}</td>
+                        <td>{{ facility.sub_name }}</td>
+                        <td class="text-center">{{ log.facility_statuses | selectattr('cnsd_facility_id', 'equalto', facility.id) | map(attribute='condition') | first or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+
+                {% if grouped_facilities.get('DATA PROCESSING') %}
+                <strong>DATA PROCESSING</strong>
+                <table class="table-bordered">
+                    <thead><tr><th>No</th><th>Fasilitas</th><th></th><th class="text-center">Kondisi</th></tr></thead>
+                    <tbody>
+                    {% for facility in grouped_facilities['DATA PROCESSING'] %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ facility.name }}</td>
+                        <td>{{ facility.sub_name }}</td>
+                        <td class="text-center">{{ log.facility_statuses | selectattr('cnsd_facility_id', 'equalto', facility.id) | map(attribute='condition') | first or 'N/A' }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+
+                <strong>Uraian Kegiatan</strong>
+                <table class="table-bordered">
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Jam</th>
+                            <th>Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for uraian in log.uraian_kegiatan %}
+                        <tr>
+                            <td>{{ uraian.event_time }}</td>
+                            <td>{{ uraian.description }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="2" class="text-center">Tidak ada kegiatan tercatat.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Manager Signature -->
+    <div class="manager-signature">
+        <p style="margin-bottom: 5px;">Manager Teknik,</p>
+        {% if log.manager_signature and signature_paths.get('manager') %}
+            <img src="file://{{ signature_paths['manager'] }}" class="signature-img">
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0">View Logbook - Approach Control Unit #{{ log.id }}</h2>
+            <div>
+                <a href="{{ url_for('main.dashboard_operasi', type='APP') }}" class="btn btn-sm btn-secondary">Back to Dashboard</a>
+                <a href="{{ url_for('main.edit_log', log_id=log.id) }}" class="btn btn-sm btn-warning">Edit</a>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            
+            <div class="card mb-4">
+                <div class="card-header" style="background-color: #f8f9fa;"><strong>General Information</strong></div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3">Day & Date</dt>
+                        <dd class="col-sm-9">{{ log.log_date.strftime('%d %B %Y') }}</dd>
+                        
+                        <dt class="col-sm-3">Shift</dt>
+                        <dd class="col-sm-9">{{ log.shift }}</dd>
+                        
+                        <dt class="col-sm-3">ATC on Duty</dt>
+                        <dd class="col-sm-9">
+                            {% if log.atc_on_duty_personnel %}
+                                <ul class="list-unstyled mb-0">
+                                {% for person in log.atc_on_duty_personnel %}
+                                    <li>{{ person.name }}</li>
+                                {% endfor %}
+                                </ul>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </dd>
+
+                        <dt class="col-sm-3">NOTAM</dt>
+                        <dd class="col-sm-9"><pre class="mb-0" style="font-family: inherit;">{{ log.notam or 'N/A' }}</pre></dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header" style="background-color: #f8f9fa;"><strong>ATC Position Seat</strong></div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-start" style="vertical-align: middle;">Position / Time</th>
+                                    {% for i in range(1, 7) %}
+                                        <th>{{ log.atc_position_header['header_' ~ i] if log.atc_position_header and log.atc_position_header['header_' ~ i] else 'Start-End' }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set positions = ["SUPERVISOR", "CONTROLLER RADAR 123.4 Mhz", "ASSISTANCE RADAR 123.4 Mhz", "CONTROLLER RADAR 120.2 Mhz", "ASSISTANCE RADAR 120.2 Mhz", "REST"] %}
+                                {% for position_name in positions %}
+                                <tr>
+                                    <td class="text-start"><strong>{{ position_name }}</strong></td>
+                                    {% set pos_data = atc_positions.get(position_name) %}
+                                    {% for i in range(1, 7) %}
+                                    <td>{{ pos_data['time_slot_' ~ i] if pos_data and pos_data['time_slot_' ~ i] else '-' }}</td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header" style="background-color: #f8f9fa;"><strong>Facilities Status Check</strong></div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for category, facilities in grouped_facilities.items() %}
+                        <div class="col-md-6">
+                            <h5 class="mt-3">{{ category }}</h5>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>FACILITIES</th>
+                                            <th>REMARK</th>
+                                            <th>Condition</th>
+                                            <th>Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for facility in facilities %}
+                                        <tr>
+                                            {% set current_status = log.facility_statuses | selectattr("facility_id", "equalto", facility.id) | first %}
+                                            <td>{{ facility.name }}</td>
+                                            <td>{{ facility.remark or 'N/A' }}</td>
+                                            <td>
+                                                {% if current_status %}
+                                                    {% set cond = current_status.condition.value %}
+                                                    {% if cond == '1' %}1 - Unreadable
+                                                    {% elif cond == '2' %}2 - Readable Now & Then
+                                                    {% elif cond == '3' %}3 - Readable but with difficulty
+                                                    {% elif cond == '4' %}4 - Readable
+                                                    {% elif cond == '5' %}5 - Perfectly Readable
+                                                    {% elif cond == 'G' %}G - Good
+                                                    {% elif cond == 'F' %}F - Fair
+                                                    {% elif cond == 'P' %}P - Poor
+                                                    {% elif cond == 'U/S' %}U/S - Unserviceable
+                                                    {% else %}{{ cond }}{% endif %}
+                                                {% else %}
+                                                    N/A
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ current_status.notes if current_status else '' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header" style="background-color: #f8f9fa;">
+                    <strong>Description of Activities</strong>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Time (UTC)</th>
+                                <th>Description</th>
+                                <th style="width: 25%;">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for op_log in log.operational_logs %}
+                            <tr>
+                                <td>{{ op_log.event_time.strftime('%H:%M') }}</td>
+                                <td>{{ op_log.description }}</td>
+                                <td>{{ op_log.remarks or '' }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">No activities recorded.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header" style="background-color: #f8f9fa;">
+                    <strong>Signatures</strong>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Transferring Controller On Duty</th>
+                                    <th>Accepting Controller On Duty</th>
+                                    <th>Manager Operation On Duty</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="height: 80px;">
+                                        {% if log.controller_signature_1 %}
+                                            <img src="{{ url_for('static', filename='uploads/' + log.controller_signature_1) }}" alt="Signature" style="max-height: 60px; max-width: 150px;">
+                                        {% else %}
+                                            <span class="text-muted">(No signature)</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="height: 80px;">
+                                        {% if log.controller_signature_2 %}
+                                            <img src="{{ url_for('static', filename='uploads/' + log.controller_signature_2) }}" alt="Signature" style="max-height: 60px; max-width: 150px;">
+                                        {% else %}
+                                            <span class="text-muted">(No signature)</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="height: 80px;">
+                                        {% if log.manager_signature %}
+                                            <img src="{{ url_for('static', filename='uploads/' + log.manager_signature) }}" alt="Signature" style="max-height: 60px; max-width: 150px;">
+                                        {% else %}
+                                            <span class="text-muted">(No signature)</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

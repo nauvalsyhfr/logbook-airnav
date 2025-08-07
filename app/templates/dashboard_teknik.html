@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center my-5">
+    <img src="{{ url_for('static', filename='img/airnav.png') }}" alt="AirNav Logo" style="height: 60px;" class="mb-3">
+    <h1 class="display-5">Logbook Harian Unit CNSD</h1>
+    <p class="lead">Silakan pilih bandara untuk melanjutkan.</p>
+
+    <div class="row mt-5 justify-content-center">
+        <!-- Yogyakarta International Airport -->
+        <div class="col-md-5 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Yogyakarta International Airport</h5>
+                    <p class="card-text">Logbook untuk cabang YIA, Kulon Progo.</p>
+                    <button class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#passwordModal" data-airport-code="YIA" data-airport-name="Yogyakarta International Airport">
+                        Buka Logbook
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Adisutjipto Airport -->
+        <div class="col-md-5 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Adisutjipto Airport</h5>
+                    <p class="card-text">Logbook untuk cabang Adisutjipto, Sleman.</p>
+                    <button class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#passwordModal" data-airport-code="Adisutjipto" data-airport-name="Adisutjipto Airport">
+                        Buka Logbook
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Adi Soemarmo International Airport -->
+        <div class="col-md-5 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Adi Soemarmo International Airport</h5>
+                    <p class="card-text">Logbook untuk cabang Adi Soemarmo, Solo.</p>
+                    <button class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#passwordModal" data-airport-code="AdiSoemarmo" data-airport-name="Adi Soemarmo International Airport">
+                        Buka Logbook
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Tunggul Wulung Airport -->
+        <div class="col-md-5 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">Tunggul Wulung Airport</h5>
+                    <p class="card-text">Logbook untuk cabang Tunggul Wulung, Cilacap.</p>
+                    <button class="btn btn-primary mt-auto" data-bs-toggle="modal" data-bs-target="#passwordModal" data-airport-code="TunggulWulung" data-airport-name="Tunggul Wulung Airport">
+                        Buka Logbook
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Password Modal -->
+<div class="modal fade" id="passwordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="passwordModalLabel">Akses Logbook</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="passwordForm" method="POST" action="{{ url_for('main.unlock_cnsd_logbook') }}">
+                <div class="modal-body">
+                    <p>Masukkan kata sandi untuk <strong id="airportName"></strong>.</p>
+                    <input type="hidden" name="airport_code" id="airportCode">
+                    <div class="mb-3">
+                        <label for="airport_password" class="form-label">Kata Sandi</label>
+                        <input type="password" class="form-control" id="airport_password" name="airport_password" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">Buka</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Script untuk mengisi data modal secara dinamis
+const passwordModal = document.getElementById('passwordModal');
+passwordModal.addEventListener('show.bs.modal', event => {
+    const button = event.relatedTarget;
+    const airportCode = button.getAttribute('data-airport-code');
+    const airportName = button.getAttribute('data-airport-name');
+
+    const modalTitle = passwordModal.querySelector('.modal-title');
+    const modalAirportName = passwordModal.querySelector('#airportName');
+    const modalAirportCodeInput = passwordModal.querySelector('#airportCode');
+
+    modalTitle.textContent = `Akses Logbook: ${airportName}`;
+    modalAirportName.textContent = airportName;
+    modalAirportCodeInput.value = airportCode;
+});
+</script>
+{% endblock %}

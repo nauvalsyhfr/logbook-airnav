@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <div>
+                <h2 class="h4 mb-0">LOG BOOK HARIAN UNIT CNSD</h2>
+                <p class="mb-0 text-muted">Lihat Detail untuk Log #{{ log.id }} - {{ log.airport }}</p>
+            </div>
+            <div>
+                <a href="{{ url_for('main.cnsd_dashboard', airport_code=log.airport) }}" class="btn btn-sm btn-secondary">Kembali ke Dashboard</a>
+                <a href="{{ url_for('main.edit_cnsd_log', log_id=log.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                <a href="{{ url_for('main.download_cnsd_log_pdf', log_id=log.id) }}" class="btn btn-sm btn-danger">Unduh PDF</a>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            <!-- Helper to get facility statuses for easy lookup -->
+            {% set statuses = {} %}
+            {% for status in log.facility_statuses %}
+                {% set _ = statuses.update({status.cnsd_facility_id: status}) %}
+            {% endfor %}
+
+            <!-- General Information -->
+            <table class="table table-bordered mb-4">
+                <tbody>
+                    <tr>
+                        <th style="width: 15%;">SHIFT</th>
+                        <td>{{ log.shift }}</td>
+                        <th style="width: 15%;">TANGGAL</th>
+                        <td>{{ log.log_date.strftime('%d %B %Y') }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Personnel Table -->
+            <h5 class="mt-4">Personil Bertugas</h5>
+            <div class="table-responsive">
+                <table class="table table-bordered table-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 5%;">No</th>
+                            <th>Nama</th>
+                            <th style="width: 35%;">Paraf</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for person in log.personnel %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ person.name }}</td>
+                            <td>
+                                {% if person.signature_path %}
+                                    <img src="{{ url_for('static', filename='uploads/' + person.signature_path) }}" alt="Paraf" style="max-height: 40px;">
+                                {% else %}
+                                    <span class="text-muted">Tidak ada paraf</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">Tidak ada data personil.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Facilities Status & Uraian Kegiatan -->
+            <div class="row mt-4">
+                <!-- PERBAIKAN: Menyeimbangkan kategori antar kolom -->
+                <!-- Kolom Kiri -->
+                <div class="col-lg-6">
+                    {% for category in ['COMMUNICATION'] %}
+                    {% if grouped_facilities.get(category) %}
+                    <h5 class="mt-3">{{ category }}</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nama Fasilitas</th>
+                                    <th></th>
+                                    <th class="text-center">Kondisi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for facility in grouped_facilities[category] %}
+                            <tr>
+                                <td>{{ facility.name }}</td>
+                                <td>{{ facility.sub_name }}</td>
+                                <td class="text-center">{{ statuses[facility.id].condition if statuses.get(facility.id) else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <!-- Kolom Kanan -->
+                <div class="col-lg-6">
+                    {% for category in ['NAVIGATION', 'SURVEILLANCE', 'DATA PROCESSING'] %}
+                    {% if grouped_facilities.get(category) %}
+                    <h5 class="mt-3">{{ category }}</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nama Fasilitas</th>
+                                    <th></th>
+                                    <th class="text-center">Kondisi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for facility in grouped_facilities[category] %}
+                            <tr>
+                                <td>{{ facility.name }}</td>
+                                <td>{{ facility.sub_name }}</td>
+                                <td class="text-center">{{ statuses[facility.id].condition if statuses.get(facility.id) else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+
+                    <!-- Uraian Kegiatan -->
+                    <h5 class="mt-4">Uraian Kegiatan</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 30%;">Jam</th>
+                                    <th>Keterangan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for uraian in log.uraian_kegiatan %}
+                                <tr>
+                                    <td>{{ uraian.event_time }}</td>
+                                    <td>{{ uraian.description }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="2" class="text-center">Tidak ada kegiatan tercatat.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Manager Signature -->
+            <div class="mt-5 text-end">
+                <p class="mb-2">Manager Teknik,</p>
+                {% if log.manager_signature %}
+                    <img src="{{ url_for('static', filename='uploads/' + log.manager_signature) }}" alt="Paraf Manajer" style="max-height: 60px;">
+                {% else %}
+                    <p class="text-muted">(Tidak ada paraf)</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

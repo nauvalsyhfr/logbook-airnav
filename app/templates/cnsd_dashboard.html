@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-0">Logbook History - CNSD</h1>
+            <p class="text-muted">Bandara: {{ airport_code }}</p>
+        </div>
+        <a href="{{ url_for('main.create_cnsd_log', airport_code=airport_code) }}" class="btn btn-primary">
+            Buat Logbook Baru
+        </a>
+    </div>
+
+    <!-- PERUBAHAN: Form untuk filter tanggal -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('main.cnsd_dashboard', airport_code=airport_code) }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="start_date" class="form-label">Tanggal Mulai</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="end_date" class="form-label">Tanggal Selesai</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-info me-2">Filter</button>
+                        <a href="{{ url_for('main.cnsd_dashboard', airport_code=airport_code) }}" class="btn btn-secondary">Hapus Filter</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Shift</th>
+                        <th>Dibuat Oleh</th>
+                        <th class="text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in log_entries %}
+                    <tr>
+                        <td>{{ log.log_date.strftime('%d %B %Y') }}</td>
+                        <td>{{ log.shift }}</td>
+                        <td>{{ log.user.username }}</td>
+                        <td class="text-center">
+                            <a href="{{ url_for('main.view_cnsd_log', log_id=log.id) }}" class="btn btn-sm btn-info">Lihat</a>
+                            <a href="{{ url_for('main.edit_cnsd_log', log_id=log.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                            <a href="{{ url_for('main.download_cnsd_log_pdf', log_id=log.id) }}" class="btn btn-sm btn-danger">PDF</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">
+                            {% if start_date or end_date %}
+                                Tidak ada entri logbook untuk rentang tanggal yang dipilih.
+                            {% else %}
+                                Belum ada entri logbook.
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
