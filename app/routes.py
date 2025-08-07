@@ -58,6 +58,23 @@ def parse_duration(time_str: str) -> timedelta:
     except (ValueError, IndexError):
         return timedelta(0)
 
+def get_cnsd_facilities_ordered(airport_code):
+    """Mengambil dan mengurutkan fasilitas CNSD berdasarkan bandara dan kategori."""
+    all_facilities = CNSDFacility.query.filter_by(airport_code=airport_code).all()
+    
+    # Tentukan urutan kategori yang diinginkan
+    category_order = ['COMMUNICATION', 'NAVIGATION', 'SURVEILLANCE', 'DATA PROCESSING']
+    
+    # Gunakan OrderedDict untuk menjaga urutan kategori
+    grouped = OrderedDict([(cat, []) for cat in category_order])
+    
+    # Kelompokkan fasilitas ke dalam kategori yang sesuai
+    for f in all_facilities:
+        if f.category in grouped:
+            grouped[f.category].append(f)
+            
+    return grouped
+
 
 # --- RUTE UTAMA & OPERASI ---
 
